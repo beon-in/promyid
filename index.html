@@ -140,7 +140,7 @@
               
               <!-- Specs Grid -->
               <div class="flex flex-wrap gap-8 text-slate-600 mb-8 border-y border-slate-50 py-6">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                   <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
                     <i class="ph-bold ph-bed text-xl"></i>
                   </div>
@@ -149,7 +149,7 @@
                     <span class="text-[10px] font-bold text-slate-400 uppercase">K.Tidur</span>
                   </div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                   <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
                     <i class="ph-bold ph-bathtub text-xl"></i>
                   </div>
@@ -158,7 +158,7 @@
                     <span class="text-[10px] font-bold text-slate-400 uppercase">K.Mandi</span>
                   </div>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                   <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
                     <i class="ph-bold ph-arrows-out text-xl"></i>
                   </div>
@@ -166,7 +166,7 @@
                     <span class="text-sm font-black text-slate-800 leading-none">{{ p.size1 }}m²</span>
                     <span class="text-[10px] font-bold text-slate-400 uppercase">Luas Tanah</span>
                   </div>
-                  <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-4">
                   <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
                     <i class="ph-bold ph-arrows-out text-xl"></i>
                   </div>
@@ -203,7 +203,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t py-12 mt-10">
       <div class="max-w-7xl mx-auto px-4 text-center">
-        <p class="text-slate-400 text-sm font-medium">© 2024 {{ settings.APP_NAME || 'GrhaListing' }}. Professional Property System.</p>
+        <p class="text-slate-400 text-sm font-medium">© 2026 {{ settings.APP_NAME || 'GrhaListing' }}. Professional Property System.</p>
       </div>
     </footer>
 
@@ -274,8 +274,10 @@
                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Kategori</label>
                <select v-model="form.category" class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:border-blue-500 transition">
                   <option value="Rumah">Rumah</option>
+                  <option value="Tanah">Tanah</option>
                   <option value="Apartemen">Apartemen</option>
                   <option value="Ruko">Ruko</option>
+                  <option value="Rukost">Rukost</option>
                </select>
              </div>
              <div>
@@ -298,8 +300,12 @@
                <input v-model="form.bath" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
              </div>
              <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Luas Tanah (m²)</label>
+               <input v-model="form.size1" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
+             </div>
+             <div>
                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Luas Bangunan (m²)</label>
-               <input v-model="form.size" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
+               <input v-model="form.size2" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
              </div>
           </div>
         </div>
@@ -322,7 +328,7 @@
             success: true, 
             data: { 
               properties: [], 
-              settings: {WA_NUMBER: '628123', APP_NAME: 'GrhaListing'} 
+              settings: {WA_NUMBER: '6285971103136', APP_NAME: 'GrhaListing'} 
             } 
           });
         }
