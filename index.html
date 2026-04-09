@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrhaListing - Enterprise Property Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    [v-cloak] { display: none; }
+    .loader { border-top-color: #2563eb; animation: spinner 1.5s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .prop-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-gray-50 text-slate-900">
+  <div id="app" v-cloak>
+    
+    <!-- Global Loading Overlay -->
+    <div v-if="loading" class="fixed inset-0 bg-white/90 backdrop-blur-md z-[100] flex flex-col items-center justify-center">
+      <div class="loader w-14 h-14 border-4 border-slate-200 rounded-full mb-4"></div>
+      <p class="text-slate-500 font-medium">Memproses data properti...</p>
+    </div>
+
+    <!-- Header & Navigation -->
+    <nav class="bg-white border-b sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+            <i class="ph-fill ph-buildings text-white text-2xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-extrabold tracking-tight leading-none text-slate-800">Grha<span class="text-blue-600">Listing</span></h1>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Premium Gallery Edition</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <div v-if="user" class="hidden md:flex flex-col items-end mr-4 border-r pr-4 border-slate-200">
+             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Administrator</p>
+             <p class="text-sm font-bold text-slate-700">{{ user.username }}</p>
+          </div>
+          <button v-if="user" @click="logout" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-100 transition">Logout</button>
+          <button v-else @click="showLoginModal = true" class="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-200 transition flex items-center gap-2">
+            <i class="ph ph-user-circle text-lg"></i> Admin Portal
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Category Filter Section -->
+    <section class="bg-white border-b pt-8 pb-10">
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="flex flex-wrap items-center justify-between gap-6">
+          <div>
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Katalog Properti</h2>
+            <p class="text-slate-500 mt-1">Jelajahi pilihan terbaik dengan galeri foto lengkap.</p>
+          </div>
+          
+          <div class="flex bg-slate-100 p-1.5 rounded-2xl">
+            <button v-for="cat in ['', 'Rumah', 'Tanah', 'Apartemen', 'Ruko', 'Rukost']" :key="cat"
+              @click="filters.category = cat" 
+              :class="filters.category === cat ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'"
+              class="px-6 py-2.5 rounded-xl text-sm font-bold transition">
+              {{ cat || 'Semua' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-10">
+      
+      <!-- Search & Admin Actions -->
+      <div class="flex flex-col md:flex-row gap-4 mb-10">
+        <div class="flex-1 relative">
+          <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl"></i>
+          <input v-model="filters.search" type="text" placeholder="Cari berdasarkan lokasi atau judul..." 
+            class="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition shadow-sm">
+        </div>
+        <button v-if="user" @click="showAddModal = true" 
+          class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 shadow-xl shadow-blue-200 transition active:scale-95">
+          <i class="ph ph-plus-circle-bold text-xl"></i> Pasang Iklan Baru
+        </button>
+      </div>
+
+      <!-- Property Listing Cards -->
+      <div v-if="filteredProperties.length > 0" class="space-y-8">
+        <div v-for="p in filteredProperties" :key="p.id" class="prop-card bg-white rounded-[32px] border border-slate-200 overflow-hidden flex flex-col md:flex-row shadow-sm hover:shadow-xl">
+          
+          <!-- Image Gallery Section -->
+          <div class="md:w-1/3 lg:w-2/5 relative bg-slate-100 min-h-[300px]">
+            <div class="h-full relative overflow-hidden group">
+               <!-- Main Display Image -->
+               <img :src="p.imageurls[p.activeIndex || 0]" class="w-full h-full object-cover transition duration-700 group-hover:scale-105" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+               
+               <!-- Status Badge -->
+               <div class="absolute top-4 left-4 flex flex-col gap-2">
+                 <span class="bg-blue-600/90 backdrop-blur text-white text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg">{{ p.status }}</span>
+               </div>
+
+               <!-- Thumbnails Navigation (Bottom Overlay) -->
+               <div v-if="p.imageurls.length > 1" class="absolute bottom-4 left-0 right-0 px-4">
+                  <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                    <img v-for="(img, idx) in p.imageurls" :key="idx" :src="img" 
+                      @click="p.activeIndex = idx"
+                      :class="(p.activeIndex || 0) === idx ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'"
+                      class="w-14 h-14 rounded-xl object-cover cursor-pointer transition flex-shrink-0 border border-white/20"
+                      onerror="this.src='https://placehold.co/100x100?text=Error'">
+                  </div>
+               </div>
+
+               <!-- Admin Delete Button -->
+               <button v-if="user" @click="deleteItem(p.id)" class="absolute top-4 right-4 bg-red-500 text-white p-2.5 rounded-xl shadow-lg hover:bg-red-600 transition">
+                 <i class="ph-bold ph-trash"></i>
+               </button>
+            </div>
+          </div>
+
+          <!-- Info Section -->
+          <div class="flex-1 p-6 md:p-10 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-wrap items-center gap-2 mb-4">
+                <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-3 py-1 rounded-md uppercase tracking-wider">{{ p.category }}</span>
+                <p class="text-slate-500 text-xs font-bold flex items-center gap-1"><i class="ph-fill ph-map-pin text-blue-500"></i> {{ p.location }}</p>
+              </div>
+              <h3 class="text-2xl font-extrabold text-slate-800 mb-6 leading-tight">{{ p.title }}</h3>
+              
+              <!-- Specs Grid -->
+              <div class="flex flex-wrap gap-8 text-slate-600 mb-8 border-y border-slate-50 py-6">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <i class="ph-bold ph-bed text-xl"></i>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-black text-slate-800 leading-none">{{ p.bed }}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">K.Tidur</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <i class="ph-bold ph-bathtub text-xl"></i>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-black text-slate-800 leading-none">{{ p.bath }}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">K.Mandi</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <i class="ph-bold ph-arrows-out text-xl"></i>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-black text-slate-800 leading-none">{{ p.size1 }}m²</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Luas Tanah</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <i class="ph-bold ph-arrows-out text-xl"></i>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-black text-slate-800 leading-none">{{ p.size2 }}m²</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Luas Bangunan</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-slate-50">
+               <div>
+                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Harga Properti</p>
+                 <p class="text-3xl font-black text-slate-900 tracking-tight">Rp {{ formatPrice(p.price) }}</p>
+               </div>
+               <a :href="'https://wa.me/' + settings.WA_NUMBER + '?text=Halo, saya tertarik dengan: ' + p.title" 
+                 target="_blank"
+                 class="bg-green-500 text-white px-10 py-4 rounded-2xl font-bold hover:bg-green-600 shadow-xl shadow-green-100 transition flex items-center justify-center gap-2 active:scale-95">
+                 <i class="ph-fill ph-whatsapp-logo text-2xl"></i> Hubungi Agen
+               </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Empty State -->
+      <div v-else class="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-slate-200">
+        <i class="ph ph-house-line text-6xl text-slate-200 mb-4 mx-auto"></i>
+        <h3 class="text-xl font-bold text-slate-400">Pencarian tidak ditemukan</h3>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t py-12 mt-10">
+      <div class="max-w-7xl mx-auto px-4 text-center">
+        <p class="text-slate-400 text-sm font-medium">© 2024 {{ settings.APP_NAME || 'GrhaListing' }}. Professional Property System.</p>
+      </div>
+    </footer>
+
+    <!-- Admin Login Modal -->
+    <div v-if="showLoginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div class="bg-white rounded-[32px] shadow-2xl w-full max-w-md p-10">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-2xl font-black">Admin Access</h2>
+          <button @click="showLoginModal = false" class="text-slate-400"><i class="ph ph-x text-2xl"></i></button>
+        </div>
+        <div class="space-y-5">
+          <input v-model="loginForm.username" type="text" placeholder="Username" class="w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:border-blue-500 transition">
+          <input v-model="loginForm.password" type="password" placeholder="Password" class="w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:border-blue-500 transition">
+          <p v-if="error" class="text-red-500 text-sm font-bold bg-red-50 p-3 rounded-xl border border-red-100">{{ error }}</p>
+          <button @click="handleLogin" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-bold hover:bg-black transition shadow-lg">Masuk Sistem</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Property Modal (Enhanced Gallery Edition) -->
+    <div v-if="showAddModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-3xl p-8 md:p-12 my-8">
+        <div class="flex justify-between items-center mb-10">
+          <div>
+            <h2 class="text-3xl font-black text-slate-800">Tambah Listing</h2>
+            <p class="text-slate-400 font-medium">Lengkapi detail dan galeri foto (Maksimal 10).</p>
+          </div>
+          <button @click="showAddModal = false" class="text-slate-400"><i class="ph ph-x text-2xl"></i></button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Judul Iklan</label>
+            <input v-model="form.title" type="text" placeholder="Rumah Minimalis Modern BSD" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-500 transition">
+          </div>
+          
+          <div class="md:col-span-2">
+            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Lokasi Properti</label>
+            <input v-model="form.location" type="text" placeholder="Jakarta Selatan, DKI Jakarta" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-500 transition">
+          </div>
+          
+          <!-- Multiple Image URL Inputs -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Galeri Foto (Input URL Gambar)</label>
+            <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scroll border-y border-slate-100 py-3">
+              <div v-for="(url, idx) in form.imageUrls" :key="idx" class="flex gap-2">
+                <div class="bg-slate-200 text-slate-500 w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0">{{ idx + 1 }}</div>
+                <input v-model="form.imageUrls[idx]" type="text" :placeholder="'https://link-gambar-anda.jpg'" 
+                  class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:border-blue-500 transition">
+                <button v-if="form.imageUrls.length > 1" @click="form.imageUrls.splice(idx, 1)" class="text-red-400 hover:text-red-600 p-2 transition">
+                  <i class="ph-bold ph-trash"></i>
+                </button>
+              </div>
+            </div>
+            <button v-if="form.imageUrls.length < 10" @click="form.imageUrls.push('')" 
+              class="mt-4 text-blue-600 font-bold text-xs flex items-center gap-2 uppercase tracking-widest hover:text-blue-700 transition">
+              <i class="ph-bold ph-plus-circle text-lg"></i> Tambah Baris Foto
+            </button>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Harga (Tanpa Titik/Koma)</label>
+            <input v-model="form.price" type="number" placeholder="500000000" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-500 transition">
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+             <div>
+               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Kategori</label>
+               <select v-model="form.category" class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:border-blue-500 transition">
+                  <option value="Rumah">Rumah</option>
+                  <option value="Apartemen">Apartemen</option>
+                  <option value="Ruko">Ruko</option>
+               </select>
+             </div>
+             <div>
+               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
+               <select v-model="form.status" class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:border-blue-500 transition">
+                  <option value="Dijual">Dijual</option>
+                  <option value="Disewa">Disewa</option>
+               </select>
+             </div>
+          </div>
+          
+          <!-- Detailed Specs -->
+          <div class="grid grid-cols-3 gap-4 md:col-span-2 bg-slate-50 p-6 rounded-[24px]">
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Kamar Tidur</label>
+               <input v-model="form.bed" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
+             </div>
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Kamar Mandi</label>
+               <input v-model="form.bath" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
+             </div>
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Luas Bangunan (m²)</label>
+               <input v-model="form.size" type="number" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition">
+             </div>
+          </div>
+        </div>
+        
+        <button @click="submitProperty" class="w-full bg-blue-600 text-white py-5 rounded-[24px] font-bold mt-10 hover:bg-blue-700 shadow-xl shadow-blue-100 transition active:scale-95">Publikasikan Listing Sekarang</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    // Helper untuk menjalankan fungsi Google Apps Script
+    const run = (method, ...args) => {
+      return new Promise((resolve, reject) => {
+        if (typeof google === 'undefined') {
+          // Mock data untuk pengembangan lokal
+          return resolve({ 
+            success: true, 
+            data: { 
+              properties: [], 
+              settings: {WA_NUMBER: '628123', APP_NAME: 'GrhaListing'} 
+            } 
+          });
+        }
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[method](...args);
+      });
+    };
+
+    createApp({
+      setup() {
+        const loading = ref(false);
+        const user = ref(JSON.parse(localStorage.getItem('grha_user')) || null);
+        const properties = ref([]);
+        const settings = ref({});
+        const showLoginModal = ref(false);
+        const showAddModal = ref(false);
+        const error = ref(null);
+        const filters = ref({ search: '', category: '' });
+        const loginForm = ref({ username: '', password: '' });
+        
+        const form = ref({
+          title: '', location: '', price: 0, bed: 0, bath: 0, size: 0, 
+          category: 'Rumah', status: 'Dijual', imageUrls: ['']
+        });
+
+        const init = async () => {
+          loading.value = true;
+          try {
+            const res = await run('getInitialData');
+            if(res.success) {
+              // Map data: pastikan imageurls adalah array
+              properties.value = res.data.properties.map(p => ({
+                ...p,
+                imageurls: Array.isArray(p.imageurls) ? p.imageurls : [p.imageurls],
+                activeIndex: 0
+              }));
+              settings.value = res.data.settings;
+            }
+          } catch(e) { console.error(e); }
+          finally { loading.value = false; }
+        };
+
+        const filteredProperties = computed(() => {
+          return properties.value.filter(p => {
+            const s = filters.value.search.toLowerCase();
+            const matchesSearch = p.title.toLowerCase().includes(s) || p.location.toLowerCase().includes(s);
+            const matchesCat = !filters.value.category || p.category === filters.value.category;
+            return matchesSearch && matchesCat;
+          }).sort((a,b) => b.id - a.id);
+        });
+
+        const handleLogin = async () => {
+          error.value = null;
+          loading.value = true;
+          try {
+            const res = await run('loginAdmin', loginForm.value);
+            if(res.success) {
+              user.value = res.data;
+              localStorage.setItem('grha_user', JSON.stringify(res.data));
+              showLoginModal.value = false;
+              loginForm.value = { username: '', password: '' };
+            } else { error.value = res.error; }
+          } catch(e) { error.value = "Koneksi gagal atau username/password salah."; }
+          finally { loading.value = false; }
+        };
+
+        const logout = () => { user.value = null; localStorage.removeItem('grha_user'); };
+
+        const submitProperty = async () => {
+          // Validasi minimal 1 foto terisi
+          const validUrls = form.value.imageUrls.filter(u => u.trim() !== '');
+          if(!form.value.title || validUrls.length === 0) {
+             alert("Judul dan minimal 1 foto wajib diisi!");
+             return;
+          }
+          loading.value = true;
+          try {
+            // Bersihkan URL kosong sebelum dikirim
+            const payload = { ...form.value, imageUrls: validUrls };
+            const res = await run('addNewProperty', payload);
+            if(res.success) {
+              await init();
+              showAddModal.value = false;
+              form.value = { title: '', location: '', price: 0, bed: 0, bath: 0, size1: 0, size2: 0, category: 'Rumah', status: 'Dijual', imageUrls: [''] };
+            }
+          } catch(e) { console.error(e); }
+          finally { loading.value = false; }
+        };
+
+        const deleteItem = async (id) => {
+          if(!confirm("Yakin ingin menghapus properti ini secara permanen?")) return;
+          loading.value = true;
+          try {
+            const res = await run('deleteProperty', id);
+            if(res.success) await init();
+          } catch(e) { console.error(e); }
+          finally { loading.value = false; }
+        };
+
+        const formatPrice = (v) => new Intl.NumberFormat('id-ID').format(v);
+
+        onMounted(init);
+
+        return {
+          loading, user, properties, settings, filters, showLoginModal, showAddModal,
+          loginForm, form, error, filteredProperties, handleLogin, logout, submitProperty, deleteItem, formatPrice
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
